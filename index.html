@@ -144,18 +144,33 @@
     <style>
       ::selection {
         background-color: transparent;
-        color: #B88486;
+        color: #FF6666;
         text-shadow: none;
       }
       ::-moz-selection {
         background-color: transparent;
-        color: #B88486;
+        color: #FF6666;
         text-shadow: none;
       }
     </style>
     <style>
       .load_grid {
         display: grid;
+      }
+    </style>
+    <style>
+      /* Make load more button image smaller and center it */
+      .load-more-wrap .album-image-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .load-more-wrap .album-image {
+        max-width: 30% !important;
+        height: auto !important;
+        margin-bottom: 10px !important;
       }
     </style>
     <style>
@@ -461,7 +476,7 @@
         <div class="work-collection-list-wrapper w-dyn-list">
           <div id="main-works-list" role="list" class="collection-list w-dyn-items">
             <!-- WORKS:START -->
-            <div class="collection-item w-dyn-item" role="listitem" data-work-id="riopele-monolite-casa-de-sezim">
+            <div class="collection-item w-dyn-item" role="listitem" data-work-id="riopele-casa-de-sezim">
               <a href="https://www.youtube.com/watch?v=9iW4DiE2pGw" target="_blank" class="album-link w-inline-block">
                 <div class="album-info-wrapper">
                   <div class="artwork-title-wrapper">
@@ -501,6 +516,7 @@
                     <div class="flex-link-wrapper">
                       <div class="year-text">2025</div>
                       <div class="role-wrapper">
+                        <div class="role-text">Production</div>
                         <div class="role-text">Recording</div>
                       </div>
                     </div>
@@ -791,6 +807,22 @@
         };
       }
 
+      function updateLoadMoreVisibility() {
+        const list = document.getElementById("main-works-list");
+        if (!list || !allWorks.length) return;
+
+        const loadMoreWrap = list.parentElement.nextElementSibling;
+        if (loadMoreWrap && loadMoreWrap.classList.contains("load-more-wrap")) {
+          const itemCount = list.querySelectorAll(".collection-item").length;
+          const remaining = Math.max(0, allWorks.length - itemCount);
+          const shouldShowLoadMore = remaining > 0;
+          loadMoreWrap.style.display = shouldShowLoadMore ? "block" : "none";
+          loadMoreWrap.classList.toggle('js-hidden', !shouldShowLoadMore);
+          loadMoreWrap.setAttribute('aria-hidden', shouldShowLoadMore ? 'false' : 'true');
+          console.log("Load more remaining:", remaining);
+        }
+      }
+
       async function loadWorksDatabase(clearExisting = true) {
         if (isLoading) return;
         isLoading = true;
@@ -804,7 +836,7 @@
             const data = await response.json();
             // Ensure data is an array
             allWorks = Array.isArray(data) ? data : [];
-            
+
             console.log("Works loaded:", allWorks.length, "items");
             if (allWorks.length === 0) {
               console.warn("Works database is empty");
@@ -892,16 +924,7 @@
             }
           }
 
-          // Update "load more" button visibility
-          const loadMoreWrap = list.parentElement.nextElementSibling;
-          if (loadMoreWrap && loadMoreWrap.classList.contains("load-more-wrap")) {
-            const itemCount = list.querySelectorAll(".collection-item").length;
-            const remaining = Math.max(0, allWorks.length - itemCount);
-            const shouldShowLoadMore = remaining > 0;
-            loadMoreWrap.style.display = shouldShowLoadMore ? "block" : "none";
-            loadMoreWrap.setAttribute('aria-hidden', shouldShowLoadMore ? 'false' : 'true');
-            console.log("Load more remaining:", remaining);
-          }
+          updateLoadMoreVisibility();
         } catch (error) {
           console.error("Error loading works database:", error);
         } finally {
@@ -926,6 +949,13 @@
         if (e.target.closest(".load-more-wrap")) {
           loadWorksDatabase(false);
         }
+      });
+
+      // Recalculate visibility on window resize
+      let resizeTimeout;
+      window.addEventListener("resize", () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(updateLoadMoreVisibility, 150);
       });
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js" defer></script>
@@ -979,6 +1009,24 @@
           };
         });
       });
+    </script>
+    <script>
+      // Intercept #work anchor clicks before Webflow's handler and scroll with
+      // the correct navbar offset (Webflow's built-in nav-height detection reads
+      // a detached <a> element and always gets 0, causing the navbar overlap).
+      document.addEventListener('click', function(e) {
+        var link = e.target.closest('a[href="#work"]');
+        if (!link) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        history.pushState({ hash: '#work' }, '', '#work');
+        var target = document.getElementById('work');
+        if (!target) return;
+        var nav = document.querySelector('.navbar-logo-center');
+        var navH = nav ? nav.offsetHeight : 0;
+        var top = target.getBoundingClientRect().top + window.pageYOffset - navH;
+        window.scrollTo({ top: top, behavior: 'smooth' });
+      }, true);
     </script>
   </body>
 </html>
